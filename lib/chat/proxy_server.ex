@@ -10,43 +10,38 @@ defmodule Chat.ProxyServer do
     defstruct [:port, :listen_socket]
   end
 
-  def start_link(opts) do
-    spawn_link(__MODULE__, :init, [opts])
-  end
-
-  def init(opts) do
-    port = Keyword.get(opts, :port, 6666)
+  def accept(port \\ 6666) do
     {:ok, listen_socket} = :gen_tcp.listen(port, [:binary, active: false, packet: :line, reuseaddr: true])
     Logger.info("Listening on port #{port}")
-    {:ok, chat_pid} = BroadcastServer.start_link([])
+    {:ok, pid} = BroadcastServer.start_link([])
     acceptor_loop(listen_socket)
   end
 
+
   def acceptor_loop(socket) do
     {:ok, client} = :gen_tcp.accept(socket)
-    :gen_tcp.send(client, "Welcome to the chat server!\n")
-    # from next line, accept a command "/NICK <nickname>" this sets a nickname for the client, and users Chat.BroadcastServer.set_nickname/2 to set the nickname
-    # a loop to listen to the client's commands and parse them
-    # first line after welcome to the chat server should be "/NICK <nickname>", else should request user to select nickname first
-    # if the command is "/NICK <nickname>", it should set the nickname for the client and send a message to the client "Nickname set to <nickname>"
-
-    serve(client)
-
+    :gen_tcp.send(client, "Welcome to the chat server!\nPlease set your nickname using the /NICK command.\n")
+    {:ok, pid} = Task.Supervisor.start_child(Chat.TaskSupervisor, fn -> serve(client, nil) end)
+    :ok = :gen_tcp.controlling_process(client, pid)
     acceptor_loop(socket)
   end
 
-  defp serve(socket) do
+  defp serve(socket, nickname) do
     socket
-    |> read_line()
-
-    serve(socket)
+    |> read_line(nickname)
+    serve(socket, nickname)
   end
 
-  defp read_line(socket) do
+
+  defp read_line(socket, nickname) do
     case :gen_tcp.recv(socket, 0) do
       {:ok, line} ->
         Logger.info("Received: #{line}")
-        parse_command(socket, line)
+        if is_nil(nickname) do
+          handle_nick(socket, line)
+        else
+          parse_command(socket, line, nickname)
+        end
       {:error, :closed} ->
         Logger.info("Client disconnected")
       {:error, reason} ->
@@ -54,13 +49,14 @@ defmodule Chat.ProxyServer do
     end
   end
 
-  defp parse_command(socket, line) do
+
+  defp parse_command(socket, line, nickname) do
     [command | args] = String.split(line, " ", trim: true)
     case command do
       "/LIST" -> handle_list(socket)
-      "/NICK" -> handle_nick(socket, hd(args))
       "/BC" -> handle_broadcast(socket, args)
       "/MSG" -> handle_message(socket, hd(args), tl(args))
+      "/NICK" -> handle_reset_nick(socket, hd(args), nickname)
       _ -> send_error(socket, "Invalid command: #{command}")
     end
   end
@@ -74,25 +70,46 @@ defmodule Chat.ProxyServer do
       }")
   end
 
-  # defp handle_nick(socket, nickname) do
-  #   nickname = String.trim(nickname)
-  #   case BroadcastServer.set_nickname(nickname, self()) do
-  #     :ok -> send_response(socket, "Nickname set to '#{nickname}'")
-  #     {:error, reason} -> send_response(socket, "Error: #{reason}")
-  #   end
-  # end
+  defp handle_nick(socket, line) do
+    [command, new_nickname] = String.split(line, " ", trim: true)
+    if command == "/NICK" and new_nickname != "" do
+      new_nickname = String.trim(new_nickname)
+      case BroadcastServer.get_all_nicknames() do
+        nicknames ->
+          case Enum.member?(nicknames, new_nickname) do
+            true ->
+              send_response(socket, "Nickname '#{new_nickname}' already taken. Please choose another nickname.")
+              :ok
+            false ->
+              case BroadcastServer.set_nickname(new_nickname, self()) do
+                {:ok, nickname} ->
+                  send_response(socket, "Nickname set to '#{nickname}'")
+                  serve(socket, nickname)
+                {:error, reason} ->
+                  send_response(socket, "Error: #{reason}")
+              end
+          end
+      end
+    else
+      send_response(socket, "Please set your nickname using the /NICK command.")
+      :ok
+    end
+  end
 
-  defp handle_nick(socket, nickname) do
-    nickname = String.trim(nickname)
-    case Chat.BroadcastServer.get_all_nicknames() do
+  def handle_reset_nick(socket, new_nickname, old_nickname) do
+    new_nickname = String.trim(new_nickname)
+    case BroadcastServer.get_all_nicknames() do
       nicknames ->
-        case Enum.member?(nicknames, nickname) do
+        case Enum.member?(nicknames, new_nickname) do
           true ->
-            send_response(socket, "Nickname '#{nickname}' already taken")
+            send_response(socket, "Nickname '#{new_nickname}' already taken. Please choose another nickname.")
+            :ok
           false ->
-            case Chat.BroadcastServer.set_nickname(nickname, self()) do
+            case BroadcastServer.set_nickname(new_nickname, self()) do
               {:ok, nickname} ->
-                send_response(socket, "Nickname set to '#{nickname}'")
+                send_response(socket, "Nickname Changed to '#{nickname}'")
+                BroadcastServer.remove_nickname(old_nickname)
+                serve(socket, nickname)
               {:error, reason} ->
                 send_response(socket, "Error: #{reason}")
             end

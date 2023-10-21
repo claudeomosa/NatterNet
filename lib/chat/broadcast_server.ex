@@ -18,6 +18,10 @@ defmodule Chat.BroadcastServer do
     GenServer.call(__MODULE__, {:set_nickname, nickname, pid})
   end
 
+  def remove_nickname(nickname) do
+    GenServer.cast(__MODULE__, {:remove_nickname, nickname})
+  end
+
   def broadcast(message) do
     GenServer.cast(__MODULE__, {:broadcast, message})
   end
@@ -74,7 +78,7 @@ defmodule Chat.BroadcastServer do
     end
   end
 
-  def handle_info({:remove_nickname, nickname}, state) do
+  def handle_cast({:remove_nickname, nickname}, state) do
     :ets.delete(:nicknames, nickname)
     {:noreply, state}
   end
