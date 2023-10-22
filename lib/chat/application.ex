@@ -7,11 +7,12 @@ defmodule Chat.Application do
 
   @impl true
   def start(_type, _args) do
+    port = String.to_integer(System.get_env("PORT") || "6666")
+
     children = [
-      # Starts a worker by calling: Chat.Worker.start_link(arg)
-      # {Chat.Worker, arg}
-      # Chat.BroadcastServer,
-      # Chat.ProxyServer
+      {Task.Supervisor, name: Chat.TaskSupervisor},
+      Supervisor.child_spec({Task, fn -> Chat.ProxyServer.accept(port) end}, restart: :permanent, id: Chat.ProxyServer ),
+      Chat.ClientsStateAgent,
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

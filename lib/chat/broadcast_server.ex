@@ -30,6 +30,15 @@ defmodule Chat.BroadcastServer do
     GenServer.cast(__MODULE__, {:send_message, nickname, message})
   end
 
+  def get_nicknames_with_pids() do
+    :ets.tab2list(:nicknames)
+  end
+
+  def get_pid_with_nickname(nickname) do
+    :ets.lookup(:nicknames, nickname)
+  end
+
+
   def get_all_nicknames() do
     :ets.tab2list(:nicknames)
     |> Enum.map(fn {nickname, _pid} -> nickname end)
@@ -83,24 +92,24 @@ defmodule Chat.BroadcastServer do
     {:noreply, state}
   end
 
-  # def handle_cast({:broadcast, message}, state) do
-  #   # Broadcast the message to all connected clients
-  #   Enum.each(:ets.tab2list(:nicknames), fn {_nickname, pid} ->
-  #     send(pid, message)
-  #   end)
-  #   {:noreply, state}
-  # end
+  def handle_cast({:broadcast, message}, state) do
+    # Broadcast the message to all connected clients
+    Enum.each(:ets.tab2list(:nicknames), fn {_nickname, pid} ->
+      send(pid, message)
+    end)
+    {:noreply, state}
+  end
 
-  # def handle_cast({:send_message, nickname, message}, state) do
-  #   case :ets.lookup(:nicknames, nickname) do
-  #     [{_nickname, pid}] ->
-  #       send(pid, message)
-  #       {:noreply, state}
-  #     _ ->
-  #       IO.puts "Nickname #{nickname} not found"
-  #       {:noreply, state}
-  #   end
-  # end
+  def handle_cast({:send_message, nickname, message}, state) do
+    case :ets.lookup(:nicknames, nickname) do
+      [{_nickname, pid}] ->
+        send(pid, message)
+        {:noreply, state}
+      _ ->
+        IO.puts "Nickname #{nickname} not found"
+        {:noreply, state}
+    end
+  end
 
   defp validate_nickname(nickname) do
     case Regex.scan(~r/\A[a-zA-Z][a-zA-Z0-9_]{0,11}\z/, nickname) do
