@@ -11,8 +11,11 @@ defmodule Chat.Application do
 
     children = [
       {Task.Supervisor, name: Chat.TaskSupervisor},
-      Supervisor.child_spec({Task, fn -> Chat.ProxyServer.accept(port) end}, restart: :permanent, id: Chat.ProxyServer ),
-      Chat.ClientsStateAgent,
+      Supervisor.child_spec({Task, fn -> Chat.ProxyServer.accept(port) end},
+        restart: :permanent,
+        id: Chat.ProxyServer
+      ),
+      Chat.ClientsStateAgent
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

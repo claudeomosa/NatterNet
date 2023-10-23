@@ -1,12 +1,29 @@
 defmodule Chat.ProxyServer do
+  @moduledoc """
+    Chat Proxy Server
+
+    Manages user connections, nicknames, and message handling in a chat server.
+
+    ## Usage
+
+    - Start the server with `Chat.ProxyServer.accept(port)`.
+    - Connect to the server and set your nickname using the `/NICK` command.
+    - Use commands like `/LIST`, `/BC`, and `/MSG` to interact with the chat.
+
+    ## Commands
+
+    - `/LIST`: List online users.
+    - `/BC [message]`: Broadcast a message to all users.
+    - `/MSG [nickname] [message]`: Send a private message to a user.
+    - `/NICK [nickname]`: Set your nickname.
+
+    ## Nickname Format
+
+    User nicknames must start with a letter and can be up to 12 characters long, containing letters, numbers, and underscores.
+
+  """
   require Logger
   alias Chat.{BroadcastServer, ClientsStateAgent, TaskSupervisor}
-
-  @moduledoc """
-    This module has Logic to start the TCP server and handle client connections.
-    It spawns proxy processes for each connected client by default on port 6666.
-    It is responsible for validating and parsing client commands and communicating with the broadcast server (Chat.BroadcastServer).
-  """
 
   defmodule State do
     defstruct [:port, :listen_socket, :nickname]
@@ -211,7 +228,6 @@ defmodule Chat.ProxyServer do
 
   defp handle_broadcast_message(socket, message, state) do
     Logger.info("Broadcasting: #{message}")
-    BroadcastServer.broadcast(message)
 
     Enum.each(ClientsStateAgent.get_clients(), fn {_client_pid, client_socket} ->
       send_response(client_socket, "Broadcast from `#{state.nickname}`: #{message}")
