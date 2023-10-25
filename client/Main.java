@@ -23,12 +23,21 @@ public class Main {
 
             System.out.println("Connected to the Elixir chat server");
 
-            while (true) {
-                String response = in.readLine();
-                if (response != null) {
-                    System.out.println("Server Response: " + response);
+            Thread responseThread = new Thread(() -> {
+                try {
+                    while (true) {
+                        String response = in.readLine();
+                        if (response != null) {
+                            System.out.println("=> " + response);
+                        }
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
+            });
+            responseThread.start();
 
+            while (true) {
                 String userCommand = userInput.nextLine();
                 if (userCommand == null) {
                     break;
