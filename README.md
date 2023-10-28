@@ -3,7 +3,13 @@
 
 This project implements a chat server in Elixir, consisting of a broadcast server (`Chat.BroadcastServer`) and a proxy server (`Chat.ProxyServer`) to handle client connections via `TCP`. The project also includes a simple Java client for connecting to the Elixir servers.
 
+## Demo
+[Screencast from 28-10-23 09:29:00.webm](https://github.com/claudeomosa/NatterNet/assets/56362108/5fe56219-4efd-4205-b944-8e96f44a6797)
+
+
+
 ## Elixir Server
+
 
 ### Chat.BroadcastServer
 - This module manages client nicknames.
