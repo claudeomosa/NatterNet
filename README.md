@@ -1,5 +1,5 @@
 # NatterNet
-## Elixir TCP chat app with a simple Java client
+## Elixir TCP chat app with a simple Java & C# client
 
 This project implements a chat server in Elixir, consisting of a broadcast server (`Chat.BroadcastServer`) and a proxy server (`Chat.ProxyServer`) to handle client connections via `TCP`. The project also includes a simple Java client for connecting to the Elixir servers.
 
@@ -73,16 +73,25 @@ javac client/Main.java
 java client.Main [hostname] [port]
 ```
 
-## Usage with Java client
+## C# Client
 
-1. Connect a Java client to the Elixir server.
+- This is a dotnet console app that can be run as below to access the chat server
+
+```bash
+  dotnet build
+  dotnet run
+```
+
+## Usage with clients
+
+1. Connect either of the clients to the Elixir server with the instructions above.
 2. Use commands 
 	* `/LIST`
 	* `/NICK <nickname>`
 	* `/BC <message>`
 	* `/MSG <nickname> <message>`.
 3. Follow the valid nickname format for setting a nickname.
-
+   
 ## Notes
 
 - Ensure that Elixir and Java are installed on your system.
